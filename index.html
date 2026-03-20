@@ -7,120 +7,112 @@
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; --card: #ffffff; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #333; margin: 0; padding: 20px; padding-bottom: 100px; }
-        header { text-align: center; margin-bottom: 30px; }
+        header { text-align: center; margin-bottom: 20px; }
         h1 { color: var(--accent); margin-bottom: 5px; }
-        .subtitle { font-size: 0.85em; color: #666; max-width: 250px; margin: auto; line-height: 1.4; }
+        .subtitle { font-size: 0.85em; color: #666; margin-bottom: 20px; }
+        .loading { text-align: center; color: var(--accent); font-style: italic; }
         
-        .wine-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-top: 4px solid var(--accent); position: relative; }
-        .wine-name { font-weight: bold; font-size: 1.1em; display: block; margin-bottom: 12px; padding-right: 30px; }
+        .wine-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-top: 4px solid var(--accent); }
+        .wine-name { font-weight: bold; font-size: 1.1em; display: block; margin-bottom: 12px; }
         
         .toggle-group { display: flex; gap: 10px; margin-bottom: 12px; }
         .btn-toggle { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9em; font-weight: 500; }
         .btn-toggle.active-like { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; border-width: 2px; }
         .btn-toggle.active-maybe { background: #fffde7; border-color: #fbc02d; color: #f57f17; border-width: 2px; }
         
-        textarea { width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-sizing: border-box; font-family: inherit; resize: none; background: #fafafa; font-size: 16px; /* Prevents iOS zoom */ }
+        textarea { width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-sizing: border-box; font-family: inherit; font-size: 16px; background: #fafafa; }
         
-        .delete-wine { position: absolute; top: 12px; right: 12px; color: #ccc; border: none; background: none; font-size: 1.2em; cursor: pointer; }
-        
-        .footer-actions { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px 20px; display: flex; gap: 10px; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); z-index: 100; }
-        .btn-main { flex: 2; background: var(--accent); color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; font-size: 1em; }
-        .btn-add { flex: 1; background: #444; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; }
-        
-        .reset-btn { text-align: center; margin-top: 20px; color: #999; font-size: 0.8em; text-decoration: underline; cursor: pointer; }
+        .footer-actions { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px 20px; display: flex; gap: 10px; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); }
+        .btn-main { flex: 1; background: var(--accent); color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>🍷 Ansonia Wine Vault</h1>
-    <div class="subtitle">Your private tasting notes. Stored only on this phone.</div>
+    <div class="subtitle">Personalized wine tracking, synced with our latest cellar.</div>
+    <div id="loading" class="loading">Loading cellar data...</div>
 </header>
 
 <div id="wineList"></div>
 
-<div class="reset-btn" onclick="clearAll()">Clear all data and start over</div>
-
 <div class="footer-actions">
-    <button class="btn-add" onclick="addNewWine()">Add Wine</button>
     <button class="btn-main" onclick="emailList()">📧 Email My List</button>
 </div>
 
 <script>
-    // PRE-LOADED WINE LIST
-    const defaultWines = [
-        { name: "Chateauneuf-du-Pape 2019", status: null, note: "" },
-        { name: "Sancerre 'Les Montachins'", status: null, note: "" },
-        { name: "Hippolyte Reverdy Sancerre 2022", status: null, note: "" }
-    ];
+    // PASTE YOUR PUBLISHED CSV URL HERE
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
 
-    let myWines = JSON.parse(localStorage.getItem('ansonia_vault_v2')) || [...defaultWines];
+    let userChoices = JSON.parse(localStorage.getItem('ansonia_vault_data')) || {};
+    let cellarWines = [];
+
+    async function loadCellar() {
+        try {
+            const response = await fetch(SHEET_CSV_URL);
+            const data = await response.text();
+            
+            // Basic CSV parser (Assumes wine name is in the first column)
+            cellarWines = data.split('\n').slice(1) // Skip header row
+                .map(row => {
+                    const columns = row.split(',');
+                    return { name: columns[0].replace(/"/g, '').trim() };
+                })
+                .filter(w => w.name !== ""); // Remove empty rows
+
+            document.getElementById('loading').style.display = 'none';
+            render();
+        } catch (e) {
+            document.getElementById('loading').innerText = "Error loading list. Check CSV link.";
+        }
+    }
 
     function render() {
         const container = document.getElementById('wineList');
         container.innerHTML = '';
-        myWines.forEach((wine, index) => {
+        cellarWines.forEach((wine) => {
+            const saved = userChoices[wine.name] || { status: null, note: "" };
             container.innerHTML += `
                 <div class="wine-card">
-                    <button class="delete-wine" onclick="deleteWine(${index})">×</button>
                     <span class="wine-name">${wine.name}</span>
                     <div class="toggle-group">
-                        <button class="btn-toggle ${wine.status === 'like' ? 'active-like' : ''}" onclick="setStatus(${index}, 'like')">👍 Like</button>
-                        <button class="btn-toggle ${wine.status === 'maybe' ? 'active-maybe' : ''}" onclick="setStatus(${index}, 'maybe')">🤔 Maybe</button>
+                        <button class="btn-toggle ${saved.status === 'like' ? 'active-like' : ''}" onclick="update('${wine.name}', 'status', 'like')">👍 Like</button>
+                        <button class="btn-toggle ${saved.status === 'maybe' ? 'active-maybe' : ''}" onclick="update('${wine.name}', 'status', 'maybe')">🤔 Maybe</button>
                     </div>
-                    <textarea oninput="setNote(${index}, this.value)" placeholder="Tasting notes, vintage, or pairings...">${wine.note}</textarea>
+                    <textarea oninput="update('${wine.name}', 'note', this.value)" placeholder="Add personal notes...">${saved.note}</textarea>
                 </div>
             `;
         });
-        localStorage.setItem('ansonia_vault_v2', JSON.stringify(myWines));
     }
 
-    function setStatus(index, status) {
-        myWines[index].status = myWines[index].status === status ? null : status;
+    function update(wineName, key, value) {
+        if (!userChoices[wineName]) userChoices[wineName] = { status: null, note: "" };
+        
+        // Toggle status off if clicking again
+        if (key === 'status' && userChoices[wineName].status === value) {
+            userChoices[wineName].status = null;
+        } else {
+            userChoices[wineName][key] = value;
+        }
+        
+        localStorage.setItem('ansonia_vault_data', JSON.stringify(userChoices));
         render();
-    }
-
-    function setNote(index, val) {
-        myWines[index].note = val;
-        localStorage.setItem('ansonia_vault_v2', JSON.stringify(myWines));
-    }
-
-    function addNewWine() {
-        const name = prompt("What is the name of the wine?");
-        if (name) {
-            myWines.push({ name, status: null, note: "" });
-            render();
-            window.scrollTo(0, document.body.scrollHeight);
-        }
-    }
-
-    function deleteWine(index) {
-        if(confirm("Delete this entry?")) {
-            myWines.splice(index, 1);
-            render();
-        }
-    }
-
-    function clearAll() {
-        if(confirm("This will erase ALL your saved notes. Are you sure?")) {
-            localStorage.removeItem('ansonia_vault_v2');
-            myWines = [...defaultWines];
-            render();
-        }
     }
 
     function emailList() {
         let body = "ANSONIA WINE VAULT - MY NOTES%0D%0A%0D%0A";
-        myWines.forEach(w => {
-            if(w.status || w.note) {
-                const s = w.status ? w.status.toUpperCase() : "NO RATING";
-                body += `🍷 ${w.name.toUpperCase()}%0D%0ASTATUS: ${s}%0D%0ANOTE: ${w.note || 'No notes added.'}%0D%0A%0D%0A`;
+        let hasData = false;
+        for (const [name, data] of Object.entries(userChoices)) {
+            if (data.status || data.note) {
+                hasData = true;
+                body += `🍷 ${name.toUpperCase()}%0D%0ASTATUS: ${data.status || 'NONE'}%0D%0ANOTE: ${data.note || 'No notes.'}%0D%0A%0D%0A`;
             }
-        });
-        window.location.href = `mailto:?subject=My Wine Tasting Notes&body=${body}`;
+        }
+        if (!hasData) alert("Check 'Like' or add a note to a wine first!");
+        else window.location.href = `mailto:?subject=My Tasting Notes&body=${body}`;
     }
 
-    render();
+    loadCellar();
 </script>
 
 </body>
