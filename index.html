@@ -41,10 +41,11 @@
 </div>
 
 <script>
-    // PASTE YOUR PUBLISHED CSV URL HERE
+    // 1. YOUR GOOGLE SHEET CSV URL
     const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
 
-    let userChoices = JSON.parse(localStorage.getItem('ansonia_vault_data')) || {};
+    // 2. Load existing data from the phone's memory
+    let userChoices = JSON.parse(localStorage.getItem('ansonia_vault_v3')) || {};
     let cellarWines = [];
 
     async function loadCellar() {
@@ -52,68 +53,101 @@
             const response = await fetch(SHEET_CSV_URL);
             const data = await response.text();
             
-            // Basic CSV parser (Assumes wine name is in the first column)
-            cellarWines = data.split('\n').slice(1) // Skip header row
+            // CSV Parser that handles quoted names correctly
+            const lines = data.split(/\r?\n/);
+            cellarWines = lines.slice(1) 
                 .map(row => {
-                    const columns = row.split(',');
-                    return { name: columns[0].replace(/"/g, '').trim() };
+                    const columns = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    if (columns[0]) {
+                        return { name: columns[0].replace(/"/g, '').trim() };
+                    }
+                    return null;
                 })
-                .filter(w => w.name !== ""); // Remove empty rows
+                .filter(w => w !== null && w.name !== "");
 
             document.getElementById('loading').style.display = 'none';
             render();
         } catch (e) {
-            document.getElementById('loading').innerText = "Error loading list. Check CSV link.";
+            document.getElementById('loading').innerText = "Sync Error. Check your connection.";
         }
     }
 
     function render() {
         const container = document.getElementById('wineList');
-        container.innerHTML = '';
+        let htmlContent = '';
+        
         cellarWines.forEach((wine) => {
+            // Pull the specific "Like/Maybe" and "Note" for this wine from memory
             const saved = userChoices[wine.name] || { status: null, note: "" };
-            container.innerHTML += `
+            
+            htmlContent += `
                 <div class="wine-card">
                     <span class="wine-name">${wine.name}</span>
                     <div class="toggle-group">
-                        <button class="btn-toggle ${saved.status === 'like' ? 'active-like' : ''}" onclick="update('${wine.name}', 'status', 'like')">👍 Like</button>
-                        <button class="btn-toggle ${saved.status === 'maybe' ? 'active-maybe' : ''}" onclick="update('${wine.name}', 'status', 'maybe')">🤔 Maybe</button>
+                        <button id="btn-like-${wine.name}" 
+                                class="btn-toggle ${saved.status === 'like' ? 'active-like' : ''}" 
+                                onclick="updateChoice('${wine.name}', 'like')">👍 Like</button>
+                        <button id="btn-maybe-${wine.name}" 
+                                class="btn-toggle ${saved.status === 'maybe' ? 'active-maybe' : ''}" 
+                                onclick="updateChoice('${wine.name}', 'maybe')">🤔 Maybe</button>
                     </div>
-                    <textarea oninput="update('${wine.name}', 'note', this.value)" placeholder="Add personal notes...">${saved.note}</textarea>
+                    <textarea id="note-${wine.name}" 
+                              oninput="updateNote('${wine.name}', this.value)" 
+                              placeholder="Add personal notes...">${saved.note}</textarea>
                 </div>
             `;
         });
+        container.innerHTML = htmlContent;
     }
 
-    function update(wineName, key, value) {
+    function updateChoice(wineName, status) {
+        // Initialize the object if it doesn't exist
         if (!userChoices[wineName]) userChoices[wineName] = { status: null, note: "" };
-        
-        // Toggle status off if clicking again
-        if (key === 'status' && userChoices[wineName].status === value) {
+
+        // Toggle: If they click the same button again, it un-presses
+        if (userChoices[wineName].status === status) {
             userChoices[wineName].status = null;
         } else {
-            userChoices[wineName][key] = value;
+            userChoices[wineName].status = status;
         }
-        
-        localStorage.setItem('ansonia_vault_data', JSON.stringify(userChoices));
-        render();
+
+        // Save to Local Storage (The "Memory")
+        localStorage.setItem('ansonia_vault_v3', JSON.stringify(userChoices));
+
+        // Update the UI classes manually so the screen doesn't "jump"
+        render(); 
+    }
+
+    function updateNote(wineName, text) {
+        if (!userChoices[wineName]) userChoices[wineName] = { status: null, note: "" };
+        userChoices[wineName].note = text;
+        // Save note to memory as they type
+        localStorage.setItem('ansonia_vault_v3', JSON.stringify(userChoices));
     }
 
     function emailList() {
-        let body = "ANSONIA WINE VAULT - MY NOTES%0D%0A%0D%0A";
-        let hasData = false;
-        for (const [name, data] of Object.entries(userChoices)) {
-            if (data.status || data.note) {
-                hasData = true;
-                body += `🍷 ${name.toUpperCase()}%0D%0ASTATUS: ${data.status || 'NONE'}%0D%0ANOTE: ${data.note || 'No notes.'}%0D%0A%0D%0A`;
+        let body = "ANSONIA WINE VAULT - MY SELECTIONS%0D%0A%0D%0A";
+        let count = 0;
+
+        // Loop through the stored data
+        for (const wineName in userChoices) {
+            const data = userChoices[wineName];
+            // Only include in email if they Liked, Maybe-d, or wrote a note
+            if (data.status || (data.note && data.note.trim() !== "")) {
+                count++;
+                const s = data.status ? data.status.toUpperCase() : "NO RATING";
+                body += `🍷 ${wineName.toUpperCase()}%0D%0ARESULT: ${s}%0D%0ANOTE: ${data.note || 'None'}%0D%0A%0D%0A`;
             }
         }
-        if (!hasData) alert("Check 'Like' or add a note to a wine first!");
-        else window.location.href = `mailto:?subject=My Tasting Notes&body=${body}`;
+
+        if (count === 0) {
+            alert("Your list is empty! Mark a few wines before emailing.");
+        } else {
+            window.location.href = `mailto:?subject=My Wine Tasting Notes&body=${body}`;
+        }
     }
 
     loadCellar();
 </script>
-
 </body>
 </html>
