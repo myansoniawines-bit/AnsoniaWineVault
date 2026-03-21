@@ -5,128 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ansonia Wine Vault</title>
     <style>
-        :root { --accent: #722f37; --bg: #fdfaf6; --card: #ffffff; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #333; margin: 0; padding: 20px; padding-bottom: 100px; }
+        :root { --accent: #722f37; --bg: #fdfaf6; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 100px; margin: 0; }
         header { text-align: center; margin-bottom: 20px; }
-        h1 { color: var(--accent); margin-bottom: 5px; }
-        .subtitle { font-size: 0.85em; color: #666; margin-bottom: 20px; }
-        .loading { text-align: center; color: var(--accent); font-style: italic; }
+        .wine-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 5px solid var(--accent); }
+        .wine-name { font-weight: bold; display: block; margin-bottom: 15px; font-size: 1.1em; color: #222; }
+        .toggle-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn-toggle { flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; font-size: 1em; transition: all 0.2s; }
         
-        .wine-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-top: 4px solid var(--accent); }
-        .wine-name { font-weight: bold; font-size: 1.1em; display: block; margin-bottom: 12px; }
+        /* STICKY STATES */
+        .active-like { background: #2e7d32 !important; color: white !important; border-color: #1b5e20 !important; font-weight: bold; }
+        .active-maybe { background: #f9a825 !important; color: white !important; border-color: #f57f17 !important; font-weight: bold; }
         
-        .toggle-group { display: flex; gap: 10px; margin-bottom: 12px; }
-        .btn-toggle { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9em; font-weight: 500; }
-        
-        /* Persistent Pressed States */
-        .btn-toggle.active-like { background: #4caf50 !important; color: white !important; border-color: #388e3c !important; font-weight: bold; }
-        .btn-toggle.active-maybe { background: #fbc02d !important; color: #333 !important; border-color: #f9a825 !important; font-weight: bold; }
-        
-        textarea { width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-sizing: border-box; font-family: inherit; font-size: 16px; background: #fafafa; }
-        
-        .footer-actions { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px 20px; display: flex; gap: 10px; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); z-index: 999; }
-        .btn-main { flex: 1; background: var(--accent); color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 10px; box-sizing: border-box; font-size: 16px; min-height: 80px; font-family: inherit; background: #fafafa; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
+        .btn-email { background: var(--accent); color: white; border: none; padding: 16px; border-radius: 10px; font-weight: bold; width: 100%; font-size: 1.1em; cursor: pointer; }
+        #status { font-size: 0.8em; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>🍷 Ansonia Wine Vault</h1>
-    <div class="subtitle">Private notes stored on your device. Syncing with Ansonia...</div>
-    <div id="loading" class="loading">Fetching current list...</div>
+    <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
+    <div id="status">Connecting to Ansonia Cellar...</div>
 </header>
 
-<div id="wineList"></div>
+<div id="container"></div>
 
-<div class="footer-actions">
-    <button class="btn-main" onclick="emailList()">📧 Email My Selections</button>
+<div class="footer">
+    <button class="btn-email" onclick="sendEmail()">📧 Email My Selections</button>
 </div>
 
 <script>
-    // 1. YOUR GOOGLE SHEET CSV URL
-    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
 
-    let userChoices = JSON.parse(localStorage.getItem('ansonia_vault_final')) || {};
-    let cellarWines = [];
+    // Using a new version key to ensure fresh local storage
+    const STORAGE_KEY = 'ansonia_vault_v5';
+    let wineData = [];
+    let savedState = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
 
-    async function loadCellar() {
+    async function init() {
         try {
-            const response = await fetch(SHEET_CSV_URL);
-            const data = await response.text();
+            const res = await fetch(SHEET_URL);
+            const text = await res.text();
+            // Split by lines and handle potential CSV quoting
+            const rows = text.split(/\r?\n/).slice(1); 
             
-            const lines = data.split(/\r?\n/);
-            cellarWines = lines.slice(1) 
-                .map(row => {
-                    const columns = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return columns[0] ? columns[0].replace(/"/g, '').trim() : null;
-                })
-                .filter(name => name !== null && name !== "");
+            wineData = rows.map(r => {
+                const cols = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                return cols[0] ? cols[0].replace(/"/g, '').trim() : null;
+            }).filter(n => n && n !== "");
 
-            document.getElementById('loading').style.display = 'none';
-            render();
+            document.getElementById('status').innerText = "Personal Vault Ready • Local Storage Active";
+            draw();
         } catch (e) {
-            document.getElementById('loading').innerText = "Sync Error. Check connection.";
+            document.getElementById('status').innerText = "Sync Error. Check Connection.";
+            console.error(e);
         }
     }
 
-    function render() {
-        const container = document.getElementById('wineList');
-        let htmlContent = '';
+    function draw() {
+        const div = document.getElementById('container');
+        let html = '';
         
-        cellarWines.forEach((name, index) => {
-            const saved = userChoices[name] || { status: null, note: "" };
+        wineData.forEach((name) => {
+            const current = savedState[name] || { s: null, n: "" };
+            const safeName = encodeURIComponent(name);
             
-            htmlContent += `
+            html += `
                 <div class="wine-card">
                     <span class="wine-name">${name}</span>
                     <div class="toggle-group">
-                        <button class="btn-toggle ${saved.status === 'like' ? 'active-like' : ''}" 
-                                onclick="updateChoice('${encodeURIComponent(name)}', 'like')">👍 Like</button>
-                        <button class="btn-toggle ${saved.status === 'maybe' ? 'active-maybe' : ''}" 
-                                onclick="updateChoice('${encodeURIComponent(name)}', 'maybe')">🤔 Maybe</button>
+                        <button class="btn-toggle ${current.s === 'L' ? 'active-like' : ''}" 
+                                onclick="handleToggle('${safeName}', 'L')">👍 Like</button>
+                        <button class="btn-toggle ${current.s === 'M' ? 'active-maybe' : ''}" 
+                                onclick="handleToggle('${safeName}', 'M')">🤔 Maybe</button>
                     </div>
-                    <textarea oninput="updateNote('${encodeURIComponent(name)}', this.value)" 
-                              placeholder="Add personal notes...">${saved.note}</textarea>
+                    <textarea oninput="handleNote('${safeName}', this.value)" 
+                              placeholder="Add tasting notes...">${current.n}</textarea>
                 </div>
             `;
         });
-        container.innerHTML = htmlContent;
+        div.innerHTML = html;
     }
 
-    function updateChoice(encodedName, status) {
-        const name = decodeURIComponent(encodedName);
-        if (!userChoices[name]) userChoices[name] = { status: null, note: "" };
+    window.handleToggle = function(safeName, val) {
+        const name = decodeURIComponent(safeName);
+        if (!savedState[name]) savedState[name] = { s: null, n: "" };
+        
+        // Toggle logic
+        savedState[name].s = (savedState[name].s === val) ? null : val;
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+        draw(); 
+    };
 
-        userChoices[name].status = (userChoices[name].status === status) ? null : status;
-        localStorage.setItem('ansonia_vault_final', JSON.stringify(userChoices));
-        render(); // Force redraw to show "pressed" state
-    }
+    window.handleNote = function(safeName, text) {
+        const name = decodeURIComponent(safeName);
+        if (!savedState[name]) savedState[name] = { s: null, n: "" };
+        savedState[name].n = text;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+    };
 
-    function updateNote(encodedName, text) {
-        const name = decodeURIComponent(encodedName);
-        if (!userChoices[name]) userChoices[name] = { status: null, note: "" };
-        userChoices[name].note = text;
-        localStorage.setItem('ansonia_vault_final', JSON.stringify(userChoices));
-    }
-
-    function emailList() {
-        let body = "MY ANSONIA TASTING NOTES%0D%0A%0D%0A";
+    window.sendEmail = function() {
+        let body = "ANSONIA WINE VAULT - MY SELECTIONS%0D%0A%0D%0A";
         let count = 0;
-
-        for (const name in userChoices) {
-            const data = userChoices[name];
-            if (data.status || (data.note && data.note.trim() !== "")) {
+        
+        Object.entries(savedState).forEach(([name, data]) => {
+            if (data.s || (data.n && data.n.trim() !== "")) {
                 count++;
-                const s = data.status ? data.status.toUpperCase() : "NO RATING";
-                body += `🍷 ${name.toUpperCase()}%0D%0ARESULT: ${s}%0D%0ANOTE: ${data.note || 'None'}%0D%0A%0D%0A`;
+                const rating = data.s === 'L' ? "LIKE" : (data.s === 'M' ? "MAYBE" : "NO RATING");
+                body += `🍷 ${name.toUpperCase()}%0D%0ARESULT: ${rating}%0D%0ANOTE: ${data.n || 'None'}%0D%0A%0D%0A`;
             }
+        });
+
+        if (count === 0) {
+            alert("Your list is empty. Like a wine or add a note first!");
+        } else {
+            window.location.href = `mailto:?subject=My Ansonia Tasting Notes&body=${body}`;
         }
+    };
 
-        if (count === 0) alert("Your list is empty!");
-        else window.location.href = `mailto:?subject=My Wine Notes&body=${body}`;
-    }
-
-    loadCellar();
+    init();
 </script>
+
 </body>
 </html>
