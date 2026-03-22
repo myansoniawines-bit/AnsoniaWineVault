@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v6</title>
+    <title>Ansonia Vault v7</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 100px; margin: 0; }
+        body { font-family: sans-serif; background: var(--bg); padding: 20px; padding-bottom: 100px; margin: 0; }
         .wine-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 5px solid var(--accent); }
-        .btn-toggle { flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; }
+        .btn-toggle { flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         
-        /* Using !important to force the color regardless of browser bugs */
-        .active-like { background-color: #2e7d32 !important; color: white !important; }
-        .active-maybe { background-color: #f9a825 !important; color: white !important; }
+        /* FORCED STICKY COLORS */
+        .active-like { background-color: #2e7d32 !important; color: white !important; font-weight: bold; border-color: #1b5e20 !important; }
+        .active-maybe { background-color: #f9a825 !important; color: white !important; font-weight: bold; border-color: #f57f17 !important; }
         
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; z-index: 1000; }
-        .btn-email { background: var(--accent); color: white; border: none; padding: 16px; border-radius: 10px; width: 100%; font-weight: bold; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+        .btn-email { background: var(--accent); color: white; border: none; padding: 18px; border-radius: 10px; width: 100%; font-weight: bold; font-size: 1.1em; }
     </style>
 </head>
 <body>
 
 <header style="text-align:center; margin-bottom:20px;">
     <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
-    <div id="ver" style="font-size:10px; color:#ccc;">Version 6.0 - Loaded: <span id="ts"></span></div>
+    <div style="font-size:10px; color:#999;">System v7.0 • <span id="ts"></span></div>
 </header>
 
 <div id="container"></div>
@@ -35,56 +35,80 @@
     document.getElementById('ts').innerText = new Date().toLocaleTimeString();
     
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
-    const KEY = 'ansonia_v6_stable';
+    const KEY = 'ansonia_v7_id_system'; // New key to clear old broken data
     
-    let wineData = [];
+    let wineList = [];
     let state = JSON.parse(localStorage.getItem(KEY)) || {};
 
     async function load() {
-        const res = await fetch(SHEET_URL + '&cachebust=' + Date.now());
-        const text = await res.text();
-        wineData = text.split(/\r?\n/).slice(1)
-            .map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)[0].replace(/"/g, '').trim())
-            .filter(n => n);
-        render();
+        try {
+            const res = await fetch(SHEET_URL + '&cb=' + Date.now());
+            const text = await res.text();
+            // This regex split handles CSVs much better
+            const rows = text.split(/\r?\n/).slice(1);
+            
+            wineList = rows.map((r, index) => {
+                const cols = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const name = cols[0] ? cols[0].replace(/"/g, '').trim() : "";
+                return { id: "wine_" + index, name: name };
+            }).filter(w => w.name !== "");
+
+            render();
+        } catch (e) {
+            alert("Error loading wines. Check connection.");
+        }
     }
 
     function render() {
         let html = '';
-        wineData.forEach(name => {
-            const s = state[name] || { s: null, n: "" };
+        wineList.forEach(wine => {
+            const s = state[wine.id] || { s: null, n: "" };
             html += `
                 <div class="wine-card">
-                    <b style="display:block;margin-bottom:10px;">${name}</b>
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <button class="btn-toggle ${s.s === 'L' ? 'active-like' : ''}" onclick="save('${name}','L')">👍 Like</button>
-                        <button class="btn-toggle ${s.s === 'M' ? 'active-maybe' : ''}" onclick="save('${name}','M')">🤔 Maybe</button>
+                    <b style="display:block;margin-bottom:12px;font-size:1.1em;">${wine.name}</b>
+                    <div style="display:flex; gap:10px; margin-bottom:12px;">
+                        <button class="btn-toggle ${s.s === 'L' ? 'active-like' : ''}" onclick="saveChoice('${wine.id}','L')">👍 Like</button>
+                        <button class="btn-toggle ${s.s === 'M' ? 'active-maybe' : ''}" onclick="saveChoice('${wine.id}','M')">🤔 Maybe</button>
                     </div>
-                    <textarea style="width:100%; box-sizing:border-box;" oninput="saveNote('${name}',this.value)" placeholder="Notes...">${s.n}</textarea>
+                    <textarea style="width:100%; box-sizing:border-box; border:1px solid #ddd; padding:10px; border-radius:8px; font-size:16px;" 
+                              oninput="saveNote('${wine.id}', this.value)" 
+                              placeholder="Notes...">${s.n}</textarea>
                 </div>`;
         });
         document.getElementById('container').innerHTML = html;
     }
 
-    window.save = function(name, val) {
-        if(!state[name]) state[name] = { s: null, n: "" };
-        state[name].s = (state[name].s === val) ? null : val;
+    window.saveChoice = function(id, val) {
+        if(!state[id]) state[id] = { s: null, n: "" };
+        state[id].s = (state[id].s === val) ? null : val;
         localStorage.setItem(KEY, JSON.stringify(state));
-        render(); // Re-render to lock the color
+        render(); // Re-render to show the colors
     };
 
-    window.saveNote = function(name, txt) {
-        if(!state[name]) state[name] = { s: null, n: "" };
-        state[name].n = txt;
+    window.saveNote = function(id, txt) {
+        if(!state[id]) state[id] = { s: null, n: "" };
+        state[id].n = txt;
         localStorage.setItem(KEY, JSON.stringify(state));
     };
 
     window.sendEmail = function() {
-        let b = "MY NOTES:%0D%0A%0D%0A";
-        Object.entries(state).forEach(([n, d]) => {
-            if(d.s || d.n) b += `${n}: ${d.s||'None'} - ${d.n}%0D%0A%0D%0A`;
+        let body = "ANSONIA WINE VAULT NOTES%0D%0A%0D%0A";
+        let count = 0;
+
+        wineList.forEach(wine => {
+            const d = state[wine.id];
+            if(d && (d.s || d.n)) {
+                count++;
+                const rating = d.s === 'L' ? "LIKE" : (d.s === 'M' ? "MAYBE" : "NO RATING");
+                body += `🍷 ${wine.name.toUpperCase()}%0D%0ARESULT: ${rating}%0D%0ANOTE: ${d.n || 'None'}%0D%0A%0D%0A`;
+            }
         });
-        window.location.href = `mailto:?subject=Wine Notes&body=${b}`;
+
+        if(count === 0) {
+            alert("Your list is empty. Add a note or like a wine first!");
+        } else {
+            window.location.href = `mailto:?subject=My Wine Selections&body=${body}`;
+        }
     };
 
     load();
