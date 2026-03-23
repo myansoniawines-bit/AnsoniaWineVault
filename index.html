@@ -3,44 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v10</title>
+    <title>Ansonia Vault v14</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 120px; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 120px; margin: 0; }
         header { text-align: center; margin-bottom: 20px; }
-        .search-bar { width: 100%; padding: 14px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; margin-bottom: 20px; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .wine-card { background: white; border-radius: 12px; padding: 18px; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); border-top: 6px solid var(--accent); position: relative; }
-        .wine-name { font-weight: bold; display: block; font-size: 1.15em; color: #1a1a1a; margin-bottom: 4px; line-height: 1.3; }
-        .db-link { display: inline-block; color: #0066cc; font-size: 0.85em; text-decoration: none; margin-bottom: 15px; font-weight: 500; }
-        .db-link:hover { text-decoration: underline; }
+        .version-tag { font-size: 10px; color: #bbb; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .search-bar { width: 100%; padding: 14px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; }
+        
+        .btn-refresh { background: #fff; border: 1px solid var(--accent); color: var(--accent); padding: 10px 20px; border-radius: 20px; font-size: 0.85em; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+
+        .wine-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); border-top: 6px solid var(--accent); }
+        .wine-name { font-weight: bold; display: block; font-size: 1.2em; color: #1a1a1a; margin-bottom: 4px; }
+        .db-link { display: inline-block; color: #0066cc; font-size: 0.9em; text-decoration: none; margin-bottom: 15px; }
+        
         .toggle-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .btn-toggle { flex: 1; padding: 14px; border: 1px solid #eee; border-radius: 10px; background: #fafafa; cursor: pointer; font-size: 1em; transition: 0.2s; }
-        .active-like { background-color: #2e7d32 !important; color: white !important; border-color: #1b5e20 !important; font-weight: bold; }
-        .active-maybe { background-color: #f9a825 !important; color: white !important; border-color: #f57f17 !important; font-weight: bold; }
-        textarea { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; background: #fff; min-height: 80px; }
-        .photo-preview { width: 100%; border-radius: 8px; margin: 10px 0; display: block; }
-        .btn-photo { background: #f0f0f0; border: 1px dashed #bbb; padding: 10px; border-radius: 8px; width: 100%; margin-top: 12px; font-size: 0.85em; color: #555; cursor: pointer; }
+        .btn-toggle { flex: 1; padding: 15px; border: 1px solid #eee; border-radius: 10px; background: #fafafa; cursor: pointer; font-size: 1em; }
+        .active-like { background-color: #2e7d32 !important; color: white !important; font-weight: bold; }
+        .active-maybe { background-color: #f9a825 !important; color: white !important; font-weight: bold; }
+        
+        textarea { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; background: #fff; min-height: 100px; resize: none; }
+        
         .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
-        .btn-email { background: var(--accent); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-weight: bold; font-size: 1.1em; letter-spacing: 0.5px; cursor: pointer; }
+        .btn-email { background: var(--accent); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-weight: bold; font-size: 1.1em; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="color:var(--accent); margin:0; font-size: 1.8em;">Ansonia Vault</h1>
-    <p style="font-size: 0.8em; color: #888; margin: 5px 0 15px 0;">Your private tasting journal</p>
-    <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Find a wine...">
+    <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
+    <div class="version-tag">System v14.0 • <span id="timestamp"></span></div>
+    <div style="margin-top: 15px;">
+        <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Search current wines...">
+        <button class="btn-refresh" onclick="manualRefresh()">🔄 Fetch latest wine list & Reset Notes</button>
+    </div>
 </header>
 
 <div id="container"></div>
 
 <div class="footer">
-    <button class="btn-email" onclick="sendEmail()">📧 Send My Tasting Report</button>
+    <button class="btn-email" onclick="sendEmail()">📧 Email My Tasting Report</button>
 </div>
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
-    const KEY = 'ansonia_v10_final'; 
+    const KEY = 'ansonia_v14_final'; 
     
     let wineList = [];
     let state = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -59,8 +66,10 @@
                     link: cols[1] ? cols[1].replace(/"/g, '').trim() : ""
                 };
             }).filter(w => w.name);
+
+            document.getElementById('timestamp').innerText = "Loaded: " + new Date().toLocaleTimeString();
             render();
-        } catch (e) { console.error("Load failed", e); }
+        } catch (e) { console.error("Sync failed", e); }
     }
 
     function render() {
@@ -70,66 +79,48 @@
         
         wineList.forEach(wine => {
             if (!wine.name.toLowerCase().includes(term)) return;
-            const s = state[wine.id] || { s: null, n: "", img: null };
+            const s = state[wine.id] || { s: null, n: "" };
             
             html += `
                 <div class="wine-card">
                     <span class="wine-name">${wine.name}</span>
-                    ${wine.link ? `<a href="${wine.link}" target="_blank" class="db-link">View Details & Info →</a>` : ''}
+                    ${wine.link ? `<a href="${wine.link}" target="_blank" class="db-link">Details & Reorder →</a>` : ''}
                     
                     <div class="toggle-group">
                         <button class="btn-toggle ${s.s === 'L' ? 'active-like' : ''}" onclick="saveChoice('${wine.id}','L')">👍 Like</button>
                         <button class="btn-toggle ${s.s === 'M' ? 'active-maybe' : ''}" onclick="saveChoice('${wine.id}','M')">🤔 Maybe</button>
                     </div>
 
-                    ${s.img ? `<img src="${s.img}" class="photo-preview">` : ''}
-                    
-                    <textarea oninput="saveNote('${wine.id}', this.value)" placeholder="Add your tasting notes here...">${s.n}</textarea>
-                    
-                    <button class="btn-photo" onclick="document.getElementById('f-${wine.id}').click()">📷 ${s.img ? 'Change' : 'Add'} Bottle Photo</button>
-                    <input type="file" id="f-${wine.id}" style="display:none" accept="image/*" onchange="upPhoto('${wine.id}', this)">
+                    <textarea oninput="saveNote('${wine.id}', this.value)" placeholder="My private tasting notes...">${s.n}</textarea>
                 </div>`;
         });
         container.innerHTML = html;
     }
 
+    window.manualRefresh = async function() {
+        // Direct Action: No confirmation prompt
+        localStorage.removeItem(KEY);
+        state = {};
+        await load();
+        window.scrollTo(0,0);
+        alert("New wine list loaded. Notes reset!");
+    }
+
     window.saveChoice = function(id, val) {
-        if(!state[id]) state[id] = { s: null, n: "", img: null };
+        if(!state[id]) state[id] = { s: null, n: "" };
         state[id].s = (state[id].s === val) ? null : val;
         localStorage.setItem(KEY, JSON.stringify(state));
         render();
     };
 
     window.saveNote = function(id, txt) {
-        if(!state[id]) state[id] = { s: null, n: "", img: null };
+        if(!state[id]) state[id] = { s: null, n: "" };
         state[id].n = txt;
         localStorage.setItem(KEY, JSON.stringify(state));
     };
 
-    window.upPhoto = function(id, input) {
-        const file = input.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const MAX = 500;
-                canvas.width = MAX;
-                canvas.height = img.height * (MAX / img.width);
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                if(!state[id]) state[id] = { s: null, n: "", img: null };
-                state[id].img = canvas.toDataURL('image/jpeg', 0.5);
-                localStorage.setItem(KEY, JSON.stringify(state));
-                render();
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    };
-
     window.sendEmail = function() {
-        let body = "ANSONIA WINE VAULT: MY TASTING REPORT%0D%0A";
+        let body = "ANSONIA WINE VAULT: TASTING REPORT%0D%0A";
         body += "------------------------------------------%0D%0A%0D%0A";
         let count = 0;
         
@@ -137,19 +128,19 @@
             const d = state[wine.id];
             if(d && (d.s || d.n)) {
                 count++;
-                const rating = d.s === 'L' ? "👍 LIKED IT" : (d.s === 'M' ? "🤔 MAYBE / INTERESTING" : "RATED: NONE");
+                const rating = d.s === 'L' ? "👍 LIKED IT" : (d.s === 'M' ? "🤔 MAYBE" : "RATED: NONE");
                 body += `🍷 WINE: ${wine.name.toUpperCase()}%0D%0A`;
                 body += `RANK: ${rating}%0D%0A`;
-                body += `NOTES: ${d.n || 'No specific notes recorded.'}%0D%0A`;
-                if(wine.link) body += `REORDER / INFO: ${wine.link}%0D%0A`;
+                body += `NOTES: ${d.n || 'No notes.'}%0D%0A`;
+                if(wine.link) body += `LINK: ${wine.link}%0D%0A`;
                 body += "------------------------------------------%0D%0A%0D%0A";
             }
         });
 
         if(count === 0) {
-            alert("No ratings found! Rate at least one wine before sending.");
+            alert("Nothing to email yet!");
         } else {
-            window.location.href = `mailto:?subject=My Ansonia Wine Selections&body=${body}`;
+            window.location.href = `mailto:?subject=My Ansonia Tasting Report&body=${body}`;
         }
     };
 
