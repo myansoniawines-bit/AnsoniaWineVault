@@ -3,39 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v7</title>
+    <title>Ansonia Vault v10</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
-        body { font-family: sans-serif; background: var(--bg); padding: 20px; padding-bottom: 100px; margin: 0; }
-        .wine-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 5px solid var(--accent); }
-        .btn-toggle { flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-        
-        /* FORCED STICKY COLORS */
-        .active-like { background-color: #2e7d32 !important; color: white !important; font-weight: bold; border-color: #1b5e20 !important; }
-        .active-maybe { background-color: #f9a825 !important; color: white !important; font-weight: bold; border-color: #f57f17 !important; }
-        
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
-        .btn-email { background: var(--accent); color: white; border: none; padding: 18px; border-radius: 10px; width: 100%; font-weight: bold; font-size: 1.1em; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 120px; margin: 0; }
+        header { text-align: center; margin-bottom: 20px; }
+        .search-bar { width: 100%; padding: 14px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; margin-bottom: 20px; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .wine-card { background: white; border-radius: 12px; padding: 18px; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); border-top: 6px solid var(--accent); position: relative; }
+        .wine-name { font-weight: bold; display: block; font-size: 1.15em; color: #1a1a1a; margin-bottom: 4px; line-height: 1.3; }
+        .db-link { display: inline-block; color: #0066cc; font-size: 0.85em; text-decoration: none; margin-bottom: 15px; font-weight: 500; }
+        .db-link:hover { text-decoration: underline; }
+        .toggle-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-toggle { flex: 1; padding: 14px; border: 1px solid #eee; border-radius: 10px; background: #fafafa; cursor: pointer; font-size: 1em; transition: 0.2s; }
+        .active-like { background-color: #2e7d32 !important; color: white !important; border-color: #1b5e20 !important; font-weight: bold; }
+        .active-maybe { background-color: #f9a825 !important; color: white !important; border-color: #f57f17 !important; font-weight: bold; }
+        textarea { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; background: #fff; min-height: 80px; }
+        .photo-preview { width: 100%; border-radius: 8px; margin: 10px 0; display: block; }
+        .btn-photo { background: #f0f0f0; border: 1px dashed #bbb; padding: 10px; border-radius: 8px; width: 100%; margin-top: 12px; font-size: 0.85em; color: #555; cursor: pointer; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
+        .btn-email { background: var(--accent); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-weight: bold; font-size: 1.1em; letter-spacing: 0.5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<header style="text-align:center; margin-bottom:20px;">
-    <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
-    <div style="font-size:10px; color:#999;">System v7.0 • <span id="ts"></span></div>
+<header>
+    <h1 style="color:var(--accent); margin:0; font-size: 1.8em;">Ansonia Vault</h1>
+    <p style="font-size: 0.8em; color: #888; margin: 5px 0 15px 0;">Your private tasting journal</p>
+    <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Find a wine...">
 </header>
 
 <div id="container"></div>
 
 <div class="footer">
-    <button class="btn-email" onclick="sendEmail()">📧 Email My Selections</button>
+    <button class="btn-email" onclick="sendEmail()">📧 Send My Tasting Report</button>
 </div>
 
 <script>
-    document.getElementById('ts').innerText = new Date().toLocaleTimeString();
-    
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
-    const KEY = 'ansonia_v7_id_system'; // New key to clear old broken data
+    const KEY = 'ansonia_v10_final'; 
     
     let wineList = [];
     let state = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -44,70 +49,107 @@
         try {
             const res = await fetch(SHEET_URL + '&cb=' + Date.now());
             const text = await res.text();
-            // This regex split handles CSVs much better
             const rows = text.split(/\r?\n/).slice(1);
             
-            wineList = rows.map((r, index) => {
+            wineList = rows.map((r, i) => {
                 const cols = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const name = cols[0] ? cols[0].replace(/"/g, '').trim() : "";
-                return { id: "wine_" + index, name: name };
-            }).filter(w => w.name !== "");
-
+                return {
+                    id: "w_" + i,
+                    name: cols[0] ? cols[0].replace(/"/g, '').trim() : "",
+                    link: cols[1] ? cols[1].replace(/"/g, '').trim() : ""
+                };
+            }).filter(w => w.name);
             render();
-        } catch (e) {
-            alert("Error loading wines. Check connection.");
-        }
+        } catch (e) { console.error("Load failed", e); }
     }
 
     function render() {
+        const term = document.getElementById('search').value.toLowerCase();
+        const container = document.getElementById('container');
         let html = '';
+        
         wineList.forEach(wine => {
-            const s = state[wine.id] || { s: null, n: "" };
+            if (!wine.name.toLowerCase().includes(term)) return;
+            const s = state[wine.id] || { s: null, n: "", img: null };
+            
             html += `
                 <div class="wine-card">
-                    <b style="display:block;margin-bottom:12px;font-size:1.1em;">${wine.name}</b>
-                    <div style="display:flex; gap:10px; margin-bottom:12px;">
+                    <span class="wine-name">${wine.name}</span>
+                    ${wine.link ? `<a href="${wine.link}" target="_blank" class="db-link">View Details & Info →</a>` : ''}
+                    
+                    <div class="toggle-group">
                         <button class="btn-toggle ${s.s === 'L' ? 'active-like' : ''}" onclick="saveChoice('${wine.id}','L')">👍 Like</button>
                         <button class="btn-toggle ${s.s === 'M' ? 'active-maybe' : ''}" onclick="saveChoice('${wine.id}','M')">🤔 Maybe</button>
                     </div>
-                    <textarea style="width:100%; box-sizing:border-box; border:1px solid #ddd; padding:10px; border-radius:8px; font-size:16px;" 
-                              oninput="saveNote('${wine.id}', this.value)" 
-                              placeholder="Notes...">${s.n}</textarea>
+
+                    ${s.img ? `<img src="${s.img}" class="photo-preview">` : ''}
+                    
+                    <textarea oninput="saveNote('${wine.id}', this.value)" placeholder="Add your tasting notes here...">${s.n}</textarea>
+                    
+                    <button class="btn-photo" onclick="document.getElementById('f-${wine.id}').click()">📷 ${s.img ? 'Change' : 'Add'} Bottle Photo</button>
+                    <input type="file" id="f-${wine.id}" style="display:none" accept="image/*" onchange="upPhoto('${wine.id}', this)">
                 </div>`;
         });
-        document.getElementById('container').innerHTML = html;
+        container.innerHTML = html;
     }
 
     window.saveChoice = function(id, val) {
-        if(!state[id]) state[id] = { s: null, n: "" };
+        if(!state[id]) state[id] = { s: null, n: "", img: null };
         state[id].s = (state[id].s === val) ? null : val;
         localStorage.setItem(KEY, JSON.stringify(state));
-        render(); // Re-render to show the colors
+        render();
     };
 
     window.saveNote = function(id, txt) {
-        if(!state[id]) state[id] = { s: null, n: "" };
+        if(!state[id]) state[id] = { s: null, n: "", img: null };
         state[id].n = txt;
         localStorage.setItem(KEY, JSON.stringify(state));
     };
 
-    window.sendEmail = function() {
-        let body = "ANSONIA WINE VAULT NOTES%0D%0A%0D%0A";
-        let count = 0;
+    window.upPhoto = function(id, input) {
+        const file = input.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const MAX = 500;
+                canvas.width = MAX;
+                canvas.height = img.height * (MAX / img.width);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                if(!state[id]) state[id] = { s: null, n: "", img: null };
+                state[id].img = canvas.toDataURL('image/jpeg', 0.5);
+                localStorage.setItem(KEY, JSON.stringify(state));
+                render();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
 
+    window.sendEmail = function() {
+        let body = "ANSONIA WINE VAULT: MY TASTING REPORT%0D%0A";
+        body += "------------------------------------------%0D%0A%0D%0A";
+        let count = 0;
+        
         wineList.forEach(wine => {
             const d = state[wine.id];
             if(d && (d.s || d.n)) {
                 count++;
-                const rating = d.s === 'L' ? "LIKE" : (d.s === 'M' ? "MAYBE" : "NO RATING");
-                body += `🍷 ${wine.name.toUpperCase()}%0D%0ARESULT: ${rating}%0D%0ANOTE: ${d.n || 'None'}%0D%0A%0D%0A`;
+                const rating = d.s === 'L' ? "👍 LIKED IT" : (d.s === 'M' ? "🤔 MAYBE / INTERESTING" : "RATED: NONE");
+                body += `🍷 WINE: ${wine.name.toUpperCase()}%0D%0A`;
+                body += `RANK: ${rating}%0D%0A`;
+                body += `NOTES: ${d.n || 'No specific notes recorded.'}%0D%0A`;
+                if(wine.link) body += `REORDER / INFO: ${wine.link}%0D%0A`;
+                body += "------------------------------------------%0D%0A%0D%0A";
             }
         });
 
         if(count === 0) {
-            alert("Your list is empty. Add a note or like a wine first!");
+            alert("No ratings found! Rate at least one wine before sending.");
         } else {
-            window.location.href = `mailto:?subject=My Wine Selections&body=${body}`;
+            window.location.href = `mailto:?subject=My Ansonia Wine Selections&body=${body}`;
         }
     };
 
