@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v18</title>
+    <title>Ansonia Vault v19</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 140px; margin: 0; max-width: 600px; margin: auto; }
@@ -28,7 +28,7 @@
 
 <header>
     <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
-    <div class="version-tag">System v18.0 • <span id="timestamp"></span></div>
+    <div class="version-tag">System v19.0 • <span id="timestamp"></span></div>
     <div style="margin-top: 15px;">
         <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Search wines...">
         <button class="btn-refresh" onclick="manualRefresh()">🔄 Fetch latest & Reset Notes</button>
@@ -44,7 +44,7 @@
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
-    const KEY = 'ansonia_v18_final'; 
+    const KEY = 'ansonia_v19_final'; 
     
     let wineList = [];
     let state = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -106,7 +106,7 @@
             if(d && (d.s || d.n)) {
                 count++;
                 const rating = d.s === 'L' ? "LIKE" : (d.s === 'M' ? "MAYBE" : "NONE");
-                body += `🍷 ${wine.name.toUpperCase()}\nRYATING: ${rating}\nNOTE: ${d.n || '-'}\n${wine.link || ''}\n\n`;
+                body += `🍷 ${wine.name.toUpperCase()}\nRATING: ${rating}\nNOTE: ${d.n || '-'}\n${wine.link || ''}\n\n`;
             }
         });
         return { body, count };
