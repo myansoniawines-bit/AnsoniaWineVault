@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v17</title>
+    <title>Ansonia Vault v18</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 140px; margin: 0; max-width: 600px; margin: auto; }
@@ -19,8 +19,6 @@
         .active-like { background-color: #2e7d32 !important; color: white !important; font-weight: bold; }
         .active-maybe { background-color: #f9a825 !important; color: white !important; font-weight: bold; }
         textarea { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; background: #fff; min-height: 100px; resize: none; }
-        
-        /* Dual Button Footer */
         .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); display: flex; gap: 10px; justify-content: center; }
         .btn-email { background: var(--accent); color: white; border: none; padding: 18px; border-radius: 12px; flex: 2; font-weight: bold; font-size: 1.1em; cursor: pointer; }
         .btn-copy { background: #eee; color: #444; border: none; padding: 18px; border-radius: 12px; flex: 1; font-weight: bold; font-size: 0.9em; cursor: pointer; }
@@ -30,7 +28,7 @@
 
 <header>
     <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
-    <div class="version-tag">System v17.0 • <span id="timestamp"></span></div>
+    <div class="version-tag">System v18.0 • <span id="timestamp"></span></div>
     <div style="margin-top: 15px;">
         <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Search wines...">
         <button class="btn-refresh" onclick="manualRefresh()">🔄 Fetch latest & Reset Notes</button>
@@ -46,7 +44,7 @@
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1817461502&single=true&output=csv';
-    const KEY = 'ansonia_v17_final'; 
+    const KEY = 'ansonia_v18_final'; 
     
     let wineList = [];
     let state = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -99,14 +97,16 @@
     };
 
     function generateReport() {
-        let body = "ANSONIA TASTING REPORT\n--------------------------\n\n";
+        const today = new Date().toLocaleDateString();
+        let body = `ANSONIA TASTING REPORT for ${today}\n`;
+        body += "---------------------------" + "\n\n";
         let count = 0;
         wineList.forEach(wine => {
             const d = state[wine.id];
             if(d && (d.s || d.n)) {
                 count++;
                 const rating = d.s === 'L' ? "LIKE" : (d.s === 'M' ? "MAYBE" : "NONE");
-                body += `🍷 ${wine.name.toUpperCase()}\nRANK: ${rating}\nNOTE: ${d.n || '-'}\n${wine.link || ''}\n\n`;
+                body += `🍷 ${wine.name.toUpperCase()}\nRYATING: ${rating}\nNOTE: ${d.n || '-'}\n${wine.link || ''}\n\n`;
             }
         });
         return { body, count };
@@ -115,13 +115,14 @@
     window.copyToClipboard = function() {
         const report = generateReport();
         if(report.count === 0) return alert("Nothing to copy!");
-        navigator.clipboard.writeText(report.body).then(() => alert("Report copied to clipboard! You can now paste it into any email."));
+        navigator.clipboard.writeText(report.body).then(() => alert("Report copied to clipboard!"));
     }
 
     window.sendEmail = function() {
         const report = generateReport();
+        const today = new Date().toLocaleDateString();
         if(report.count === 0) return alert("Nothing to email!");
-        const mailtoUrl = `mailto:?subject=Ansonia Tasting Report&body=${encodeURIComponent(report.body)}`;
+        const mailtoUrl = `mailto:?subject=Ansonia Tasting Report ${today}&body=${encodeURIComponent(report.body)}`;
         window.location.href = mailtoUrl;
     };
 
