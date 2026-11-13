@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v20</title>
+    <title>Ansonia Vault v20.1</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 140px; margin: 0; max-width: 600px; margin: auto; }
@@ -11,6 +11,8 @@
         .version-tag { font-size: 10px; color: #bbb; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
         .search-bar { width: 100%; padding: 14px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; outline: none; }
         .btn-refresh { background: #fff; border: 1px solid var(--accent); color: var(--accent); padding: 10px 20px; border-radius: 20px; font-size: 0.85em; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+        .btn-row { display: flex; gap: 10px; justify-content: center; }
+        a.btn-refresh { text-decoration: none; display: inline-block; }
         .wine-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); border-top: 6px solid var(--accent); }
         .wine-name { font-weight: bold; display: block; font-size: 1.2em; color: #1a1a1a; margin-bottom: 4px; }
         .wine-price { display: block; color: var(--accent); font-weight: bold; margin-bottom: 6px; }
@@ -29,10 +31,13 @@
 
 <header>
     <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
-    <div class="version-tag">System v20.0 • <span id="timestamp"></span></div>
+    <div class="version-tag">System v20.1 • <span id="timestamp"></span></div>
     <div style="margin-top: 15px;">
         <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Search wines...">
-        <button class="btn-refresh" onclick="manualRefresh()">🔄 Fetch latest & Reset Notes</button>
+        <div class="btn-row">
+            <button class="btn-refresh" onclick="manualRefresh()">🔄 Fetch latest & Reset Notes</button>
+            <a id="summary-btn" class="btn-refresh" target="_blank" style="display:none">📄 Summary</a>
+        </div>
     </div>
 </header>
 
@@ -47,6 +52,15 @@
     // Nov_13_2026 tab (gid=1228645411) of the published spreadsheet.
     // Expected columns (by header name): # | Wine | Price | (blank) | Source
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1228645411&single=true&output=csv';
+    // Summary button: the Nov-13-2026_PDF tab, published to the web as a web page.
+    // Put that tab's gid number (from its address bar, after "gid=") between the quotes.
+    const SUMMARY_GID = '';
+    const SUMMARY_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pubhtml?gid=' + SUMMARY_GID + '&single=true';
+    if (SUMMARY_GID) {
+        const b = document.getElementById('summary-btn');
+        b.href = SUMMARY_URL; b.style.display = 'inline-block';
+    }
+
     // New key so notes from earlier tastings don't attach to tonight's wines.
     const KEY = 'ansonia_2026_11_13';
 
@@ -78,10 +92,14 @@
     async function load() {
         try {
             const res = await fetch(SHEET_URL + '&cb=' + Date.now());
-            const rows = parseCSV(await res.text());
+            if (!res.ok) throw new Error('Google returned HTTP ' + res.status + ' — is this tab published to the web?');
+            const text = await res.text();
+            if (/^\s*</.test(text)) throw new Error('Google returned a web page, not CSV — is this tab published to the web?');
+            const rows = parseCSV(text);
             const head = rows[0].map(h => h.trim().toLowerCase());
             const col = name => head.indexOf(name);
             const iWine = col('wine'), iPrice = col('price'), iSource = col('source');
+            if (iWine < 0) throw new Error('No "Wine" column found. Headers seen: ' + rows[0].join(' | '));
             wineList = rows.slice(1).map((r, i) => {
                 const name = (r[iWine] || '').trim();
                 let link = (r[iSource] || '').trim();
@@ -90,7 +108,11 @@
             }).filter(w => w.name);
             document.getElementById('timestamp').innerText = "Loaded: " + new Date().toLocaleTimeString();
             render();
-        } catch (e) { console.error("Sync failed", e); }
+        } catch (e) {
+            console.error("Sync failed", e);
+            document.getElementById('timestamp').innerText = "Load failed";
+            document.getElementById('container').innerHTML = `<div class="wine-card"><b>Couldn't load the wine list.</b><br><br>${esc(e.message || e)}</div>`;
+        }
     }
 
     function render() {
