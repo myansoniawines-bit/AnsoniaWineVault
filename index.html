@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ansonia Vault v20.1</title>
+    <title>Ansonia Vault v20.2</title>
     <style>
         :root { --accent: #722f37; --bg: #fdfaf6; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); padding: 20px; padding-bottom: 140px; margin: 0; max-width: 600px; margin: auto; }
         header { text-align: center; margin-bottom: 20px; }
         .version-tag { font-size: 10px; color: #bbb; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        .search-bar { width: 100%; padding: 14px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; outline: none; }
         .btn-refresh { background: #fff; border: 1px solid var(--accent); color: var(--accent); padding: 10px 20px; border-radius: 20px; font-size: 0.85em; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
         .btn-row { display: flex; gap: 10px; justify-content: center; }
         a.btn-refresh { text-decoration: none; display: inline-block; }
@@ -31,9 +30,8 @@
 
 <header>
     <h1 style="color:var(--accent); margin:0;">Ansonia Vault</h1>
-    <div class="version-tag">System v20.1 • <span id="timestamp"></span></div>
+    <div class="version-tag">System v20.2 • <span id="timestamp"></span></div>
     <div style="margin-top: 15px;">
-        <input type="text" id="search" oninput="render()" class="search-bar" placeholder="🔍 Search wines...">
         <div class="btn-row">
             <button class="btn-refresh" onclick="manualRefresh()">🔄 Fetch latest & Reset Notes</button>
             <a id="summary-btn" class="btn-refresh" target="_blank" style="display:none">📄 Summary</a>
@@ -116,11 +114,9 @@
     }
 
     function render() {
-        const term = document.getElementById('search').value.toLowerCase();
         const container = document.getElementById('container');
         let html = '';
         wineList.forEach(wine => {
-            if (!wine.name.toLowerCase().includes(term)) return;
             const s = state[wine.id] || { s: null, n: "" };
             html += `<div class="wine-card"><span class="wine-name">${esc(wine.name)}</span>${wine.price ? `<span class="wine-price">${esc(wine.price)}</span>` : ''}${wine.link ? `<a href="${esc(wine.link)}" target="_blank" class="db-link">Details & Reorder →</a>` : ''}<div class="toggle-group"><button class="btn-toggle ${s.s === 'L' ? 'active-like' : ''}" onclick="saveChoice('${wine.id}','L')">👍 Like</button><button class="btn-toggle ${s.s === 'M' ? 'active-maybe' : ''}" onclick="saveChoice('${wine.id}','M')">🤔 Maybe</button></div><textarea oninput="saveNote('${wine.id}', this.value)" placeholder="My private tasting notes...">${esc(s.n)}</textarea></div>`;
         });
