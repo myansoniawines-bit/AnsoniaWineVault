@@ -49,11 +49,13 @@
 <script>
     // Nov_21_2026 tab (gid=1228645411) of the published spreadsheet.
     // Expected columns (by header name): # | Wine | Price | (blank) | Source
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1228645411&single=true&output=csv';
+    const SHEET_URL = '...pub?gid=1602386142&single=true&output=csv';   // Nov-21-2026 (wine list)
+    const SUMMARY_GID = '1288597047';                                     // Nov-21-2026_PDF (summary)
+    //const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pub?gid=1228645411&single=true&output=csv';
     // Summary button: the Nov-13-2026_PDF tab, published to the web as a web page.
     // Put that tab's gid number (from its address bar, after "gid=") between the quotes.
     //const SUMMARY_GID = '805524113';
-    const SUMMARY_GID = '1602386142';
+    //const SUMMARY_GID = '1602386142';
     const SUMMARY_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbHkzVoSers1cLk05REXLT1sbvDzxRFhX5Ohi5Cu28UHWv6goTzLh31O-T6eqB9_x6aKUv25znz32g/pubhtml?gid=' + SUMMARY_GID + '&single=true';
     if (SUMMARY_GID) {
         const b = document.getElementById('summary-btn');
